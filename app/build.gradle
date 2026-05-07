@@ -1,0 +1,33 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+
+    namespace 'com.example.smarthome'
+
+    compileSdk 34
+
+    defaultConfig {
+
+        applicationId "com.example.smarthome"
+
+        minSdk 24
+        targetSdk 34
+
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}
+
+dependencies {
+
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+
+}
