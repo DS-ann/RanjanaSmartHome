@@ -1,0 +1,1945 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ranjana's Smart Home</title>
+
+<!-- Google Sans Code font -->
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- PWA manifest -->
+<link rel="manifest" href="manifest.json">
+
+<!-- Scripts -->
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://twemoji.maxcdn.com/v/latest/twemoji.min.js"></script>
+
+<style>
+body{font-family:'Roboto',sans-serif;background:#0f172a;color:white;margin:0;text-align:center;}
+.header{background:#1e293b;padding:15px;margin:10px;border-radius:12px;}
+.header h2{font-family:'Google Sans Code',sans-serif;font-weight:600;font-size:28px;}
+.updateBtn{background:none;border:none;color:#22c55e;font-size:18px;cursor:pointer;margin-left:6px;}
+.room{background:#1e293b;margin:15px;padding:15px;border-radius:12px;}
+.device{display:flex;align-items:center;justify-content:space-between;background:#334155;padding:10px;margin:8px 0;border-radius:10px;transition:0.3s;}
+.device.on{background:#1e3a2f;box-shadow:0 0 10px #22c55e;}
+.mic.active{
+  box-shadow:0 0 20px #22c55e;
+  transform:scale(1.1);
+}
+.modeTabs{
+
+display:flex;
+justify-content:center;
+gap:10px;
+margin:10px;
+
+}
+
+.modeBtn{
+
+background:#334155;
+color:white;
+border:none;
+padding:10px 18px;
+border-radius:10px;
+cursor:pointer;
+font-size:14px;
+
+}
+
+.modeBtn.active{
+
+background:#22c55e;
+
+}
+
+#wifiStatusBox,
+#bleStatusBox{
+
+margin-top:8px;
+
+}
+.icon{font-size:22px;width:30px;}
+.device.on .fan{animation:spin 1s linear infinite;}
+.fanPanel{
+max-height:0;
+overflow:hidden;
+transition:max-height 0.35s ease;
+background:#020617;
+margin-top:-6px;
+margin-bottom:10px;
+border-radius:10px;
+padding:0 10px;
+box-sizing:border-box;
+}
+
+.fanPanel input[type=range]{
+
+width:95%;
+margin:12px 0;
+
+appearance:none;
+-webkit-appearance:none;
+
+height:6px;
+border-radius:5px;
+
+background:#1e293b;
+
+outline:none;
+
+}
+
+/* Thumb */
+.fanPanel input[type=range]::-webkit-slider-thumb{
+
+-webkit-appearance:none;
+
+appearance:none;
+
+height:16px;
+width:16px;
+
+border-radius:50%;
+
+background:#22c55e;
+
+cursor:pointer;
+
+margin-top:-5px;
+
+}
+
+/* Firefox */
+.fanPanel input[type=range]::-moz-range-thumb{
+
+height:16px;
+width:16px;
+
+border-radius:50%;
+
+background:#22c55e;
+
+cursor:pointer;
+
+}
+
+/* Arrow rotate */
+
+.fanArrow{
+
+transition:transform 0.3s ease;
+
+}
+
+.fanArrow.open{
+
+transform:rotate(180deg);
+
+}
+
+
+@keyframes popIn{
+  from{ transform:translate(-50%,-50%) scale(0.9); opacity:0 }
+  to{ transform:translate(-50%,-50%) scale(1); opacity:1 }
+}
+
+.listening-dot::after{
+  content:"";
+  display:inline-block;
+  width:6px;
+  height:6px;
+  margin-left:6px;
+  border-radius:50%;
+  background:#22c55e;
+  animation:pulse 1s infinite;
+}
+
+@keyframes pulse{
+  0%{opacity:0.2; transform:scale(1)}
+  50%{opacity:1; transform:scale(1.6)}
+  100%{opacity:0.2; transform:scale(1)}
+}
+#voicePopup{
+  position:fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  background:#1e293b;
+  padding:20px 30px;
+  border-radius:12px;
+  font-size:18px;
+  display:none;
+  z-index:1000;
+  width:300px;
+  text-align:left;
+  font-family:'Google Sans Code',sans-serif;
+
+  animation: popIn 0.2s ease;
+}
+
+#voiceFinal{
+  font-weight:600;
+  color:white;
+  min-height:24px;
+}
+
+#voiceInterim{
+  color:#94a3b8;
+  font-size:14px;
+  margin-top:6px;
+}
+.device.on .light{animation:glow 1.5s infinite alternate;}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes glow{from{text-shadow:0 0 5px #fff}to{text-shadow:0 0 20px yellow}}
+.toggle{position:relative;width:50px;height:26px;}
+.toggle input{display:none;}
+.slider{position:absolute;cursor:pointer;background:#64748b;border-radius:34px;top:0;left:0;right:0;bottom:0;}
+.slider:before{position:absolute;content:"";height:20px;width:20px;left:3px;bottom:3px;background:white;border-radius:50%;transition:0.3s;}
+input:checked + .slider{background:#22c55e;}
+input:checked + .slider:before{transform:translateX(24px);}
+.timerCircle{width:42px;height:42px;border-radius:50%;background:conic-gradient(#22c55e 0deg,#1e293b 0deg);display:flex;align-items:center;justify-content:center;font-size:10px;}
+.iconBtn{background:none;border:none;font-size:18px;color:white;cursor:pointer;}
+.mic{position:fixed;bottom:30px;right:30px;width:60px;height:60px;border-radius:50%;background:#22c55e;font-size:28px;border:none;color:white;cursor:pointer;}
+.wave{position:fixed;bottom:30px;right:30px;width:60px;height:60px;border-radius:50%;background:#22c55e;opacity:0.3;animation:wave 2s infinite;display:none;}
+.wave:nth-child(2){animation-delay:0.5s}
+.wave:nth-child(3){animation-delay:1s}
+@keyframes wave{0%{transform:scale(1);opacity:0.5}100%{transform:scale(2.5);opacity:0}}
+img.emoji{height:20px;width:20px;vertical-align:middle;}
+</style>
+</head>
+<body>
+
+<div class="header">
+<h2>🏠 Ranjana's Smart Home</h2>
+<button class="updateBtn" onclick="requestStatus()">🔄</button>
+</div>
+
+<!-- MODE TABS -->
+<div class="modeTabs">
+
+<button class="modeBtn active"
+id="wifiTab"
+onclick="setMode('wifi')">
+📶 WiFi Mode
+</button>
+
+<button class="modeBtn"
+id="bleTab"
+onclick="setMode('ble')">
+🔵 Bluetooth Mode
+</button>
+
+</div>
+
+<!-- Status Areas -->
+<div id="wifiStatusBox">
+
+MQTT:
+<span id="mqttStatus">Connecting...</span><br>
+
+WiFi:
+<span id="wifiSSID">--</span>
+
+Signal:
+<span id="wifiRSSI">--</span>
+
+</div>
+
+<div id="bleStatusBox" style="display:none">
+
+Bluetooth:
+<span id="bleStatus">Disconnected</span>
+
+</div>
+
+<div id="rooms"></div>
+<h3>Room 1 Usage</h3>
+<canvas id="usageChart1" width="350" height="200"></canvas>
+
+<h3>Room 2 Usage</h3>
+<canvas id="usageChart2" width="350" height="200"></canvas>
+
+<div id="voicePopup">
+  <div id="voiceFinal"></div>
+  <div id="voiceInterim" style="opacity:0.5;"></div>
+</div>
+<div class="wave"></div><div class="wave"></div><div class="wave"></div>
+<button class="mic" onclick="startVoiceEngine()">🎤</button>
+
+<script>
+twemoji.parse(document.querySelector(".header"))
+// --- MQTT ---
+const broker="wss://5dba91287f8248c1a30195053d3862ed.s1.eu.hivemq.cloud:8884/mqtt"
+const topicCmd="home/esp32/commands"
+let client = null;
+
+// UNIVERSAL COMMAND SENDER
+function sendCommand(cmd){
+
+if(!cmd) return;
+
+
+// ---------- WIFI MODE ----------
+
+if(currentMode === "wifi"){
+
+if(client && client.connected){
+
+client.publish(
+topicCmd,
+cmd
+);
+
+}
+else{
+
+console.log(
+"MQTT not connected, command skipped:",
+cmd
+);
+
+}
+
+}
+
+
+// ---------- BLE MODE ----------
+
+else if(currentMode === "ble"){
+
+if(window.Android){
+    Android.sendBLE(cmd);
+}
+else{
+    console.log("BLE bridge not available");
+}
+
+}
+
+}
+let usageData=new Array(8).fill(0)
+let timers=new Array(8).fill(0)
+let timerTotal=new Array(8).fill(0)
+let lastRoom=null,lastDeviceType=null
+const deviceNames=["Light","Fan","Tube","Socket","Light","Fan","Bulb","Socket"]
+const icons=["💡","🌀","💡","🔌","💡","🌀","💡","🔌"]
+const roomsDiv=document.getElementById("rooms")
+
+// --- Create rooms ---
+for(let i=0;i<8;i++){
+
+let room=i<4?1:2
+
+let roomDiv=document.getElementById("room"+room)
+
+if(!roomDiv){
+
+roomDiv=document.createElement("div")
+
+roomDiv.className="room"
+
+roomDiv.id="room"+room
+
+roomDiv.innerHTML="<h3>Room "+room+"</h3>"
+
+roomsDiv.appendChild(roomDiv)
+
+}
+
+let iconClass=(i==1||i==5)?"fan":"light"
+
+let controlHTML="";
+
+let extraPanel="";
+
+// --- FAN DEVICES ---
+if(i==1 || i==5){
+
+let fanRoom=(i==1)?1:2;
+
+// Fan toggle + arrow
+controlHTML=`
+
+<label class="toggle">
+
+<input type="checkbox" data-id="${i}">
+
+<span class="slider"></span>
+
+</label>
+
+<button class="iconBtn fanArrow"
+id="fanArrow${fanRoom}"
+onclick="toggleFanPanel(${fanRoom})">
+
+▼
+
+</button>
+
+`;
+
+// Separate sliding panel (OUTSIDE device)
+extraPanel=`
+
+<div class="fanPanel"
+id="fanPanel${fanRoom}">
+
+<input type="range"
+min="0"
+max="4"
+step="1"
+value="0"
+
+oninput="
+setFanSpeed(${fanRoom},this.value);
+this.nextElementSibling.innerText='Speed: '+this.value;
+
+let min = this.min || 0;
+let max = this.max || 4;
+let val = this.value;
+
+let percent = (val - min) * 100 / (max - min);
+
+this.style.background =
+'linear-gradient(to right, #22c55e ' + percent + '%, #1e293b ' + percent + '%)';
+">
+
+<div style="
+font-size:12px;
+color:#94a3b8;
+margin-bottom:8px;
+">
+Speed: 0
+</div>
+
+</div>
+
+`;
+
+}
+
+// --- NORMAL DEVICES ---
+else{
+
+controlHTML=`
+
+<label class="toggle">
+
+<input type="checkbox" data-id="${i}">
+
+<span class="slider"></span>
+
+</label>
+
+`;
+
+}
+
+// --- DEVICE CARD ---
+roomDiv.innerHTML+=`
+
+<div class="device">
+
+<div class="icon ${iconClass}">
+${icons[i]}
+</div>
+
+<div>
+${deviceNames[i]}
+</div>
+
+<div class="timerCircle"
+id="circle${i}">
+<span id="timer${i}"></span>
+</div>
+
+${controlHTML}
+
+<button class="iconBtn"
+onclick="setTimer(${i})">
+⏱
+</button>
+
+<button class="iconBtn"
+onclick="showUsage(${i})">
+📊
+</button>
+
+</div>
+
+${extraPanel}
+
+`
+
+}
+// ---------- DEVICE SWITCH HANDLERS ----------
+
+// Only attach to checkboxes (NOT sliders)
+document.querySelectorAll(
+"input[type='checkbox']"
+).forEach(el=>{
+
+el.onchange=()=>{
+
+if(!el.dataset.id) return;
+
+sendCommand(
+el.dataset.id +
+(el.checked ? "1" : "0")
+);
+
+};
+
+});
+
+
+
+
+
+function requestStatus(){
+
+sendCommand("status");
+
+}
+
+function updateSliderFill(slider){
+  let min = slider.min || 0;
+  let max = slider.max || 4;
+  let val = slider.value;
+
+  let percent = (val - min) * 100 / (max - min);
+
+  slider.style.background =
+  `linear-gradient(to right, #22c55e ${percent}%, #1e293b ${percent}%)`;
+}
+
+// Apply to all sliders
+document.querySelectorAll(".fanPanel input[type=range]").forEach(s=>{
+  updateSliderFill(s);
+
+  s.addEventListener("input", ()=>updateSliderFill(s));
+});
+
+// ---------- PARSE DATA FROM ESP ----------
+
+function parseData(msg){
+
+if(!msg) return;
+
+
+// ---------- FAN SPEED UPDATE ----------
+
+if(msg.startsWith("F")){
+
+let p =
+msg.substring(1).split(",");
+
+let f1 =
+parseInt(p[0] ?? 0) || 0;
+
+let f2 =
+parseInt(p[1] ?? 0) || 0;
+
+
+// Room 1
+let panel1 =
+document.getElementById("fanPanel1");
+
+if(panel1){
+
+let slider1 =
+panel1.querySelector(
+"input[type='range']"
+);
+
+let label1 =
+panel1.querySelector("div");
+
+if(slider1){
+
+slider1.value = f1;
+updateSliderFill(slider1);
+}
+
+if(label1){
+
+label1.innerText =
+"Speed: " + f1;
+
+}
+
+}
+
+
+// Room 2
+let panel2 =
+document.getElementById("fanPanel2");
+
+if(panel2){
+
+let slider2 =
+panel2.querySelector(
+"input[type='range']"
+);
+
+let label2 =
+panel2.querySelector("div");
+
+if(slider2){
+
+slider2.value = f2;
+updateSliderFill(slider2);
+}
+
+if(label2){
+
+label2.innerText =
+"Speed: " + f2;
+
+}
+
+}
+
+return;
+
+}
+
+
+
+// ---------- WIFI STATUS ----------
+
+if(msg.startsWith("S")){
+
+let p = msg.split(",");
+
+if(p.length >= 2){
+
+let ssid =
+p[0].substring(1);
+
+let rssi =
+p[1].substring(1);
+
+document.getElementById("wifiSSID")
+.innerText = ssid;
+
+document.getElementById("wifiRSSI")
+.innerText = rssi + " dBm";
+
+}
+
+return;
+
+}
+
+
+
+// ---------- RELAY + TIMER DATA ----------
+
+let offset =
+msg.startsWith("a:")
+? 0
+: 4;
+
+let parts =
+msg.split(",");
+
+if(parts.length < 9) return;
+
+
+// Relay states
+let r =
+parts[0].substring(3);
+
+for(let i=0;i<4;i++){
+
+let id =
+offset + i;
+
+let sw =
+document.querySelector(
+'input[data-id="'+id+'"]'
+);
+
+if(sw){
+
+let state =
+(r[i] === "1");
+
+sw.checked = state;
+
+let deviceCard =
+sw.closest(".device");
+
+if(deviceCard){
+
+deviceCard.classList
+.toggle("on",state);
+
+}
+
+}
+
+}
+
+
+
+// Timer values
+for(let i=0;i<4;i++){
+
+let id =
+offset + i;
+
+let m =
+parseInt(
+parts[i+1]
+.replace("T","")
+) || 0;
+
+let seconds =
+m * 60;
+
+
+// Only update if changed
+if(seconds > 0){
+
+if(timers[id] !== seconds){
+
+timers[id] = seconds;
+
+timerTotal[id] =
+seconds;
+
+}
+
+}
+else{
+
+timers[id] = 0;
+
+timerTotal[id] = 0;
+
+}
+
+}
+
+
+
+// Usage data
+for(let i=0;i<4;i++){
+
+let id =
+offset + i;
+
+usageData[id] =
+parseInt(
+parts[i+5]
+.replace("U","")
+) || 0;
+
+}
+
+
+updateGraphs();
+
+}
+
+
+
+// ---------- USAGE POPUP ----------
+
+function showUsage(id){
+
+alert(
+deviceNames[id] +
+" Usage: " +
+usageData[id] +
+" minutes"
+);
+
+}
+
+
+
+// ---------- TIMER SET ----------
+
+function setTimer(id){
+
+let m =
+parseInt(
+prompt("Timer minutes")
+);
+
+if(
+isNaN(m) ||
+m <= 0
+) return;
+
+sendCommand(
+"T" + id + m
+);
+
+}
+
+
+
+// ---------- TIMER DISPLAY ----------
+
+let timerEls=[];
+let circleEls=[];
+
+for(let i=0;i<8;i++){
+
+timerEls[i]=
+document.getElementById(
+"timer"+i
+);
+
+circleEls[i]=
+document.getElementById(
+"circle"+i
+);
+
+}
+
+
+
+// ---------- TIMER LOOP ----------
+
+setInterval(()=>{
+
+for(let i=0;i<8;i++){
+
+if(timers[i] > 0){
+
+timers[i]--;
+
+
+// Format time
+let m =
+Math.floor(
+timers[i]/60
+);
+
+let s =
+timers[i] % 60;
+
+if(s < 10)
+s = "0"+s;
+
+
+// Update display
+if(timerEls[i]){
+
+timerEls[i].innerText =
+m + ":" + s;
+
+}
+
+
+// Update circle
+if(
+timerTotal[i] > 0 &&
+circleEls[i]
+){
+
+let progress =
+(timers[i] /
+timerTotal[i]) * 360;
+
+circleEls[i].style.background =
+"conic-gradient(#22c55e " +
+progress +
+"deg,#1e293b 0deg)";
+
+}
+
+
+// Timer finished
+if(
+timers[i] === 0 &&
+timerTotal[i] > 0
+){
+
+speak(
+deviceNames[i] +
+" timer ended"
+);
+
+// Prevent repeat speech
+timerTotal[i] = 0;
+
+}
+
+}
+
+}
+
+},1000);
+
+// ---------- CHART VARIABLES ----------
+
+let usageChart1 = null;
+let usageChart2 = null;
+
+
+// ---------- INITIALIZE CHARTS ----------
+
+function initCharts(){
+
+let canvas1 =
+document.getElementById("usageChart1");
+
+let canvas2 =
+document.getElementById("usageChart2");
+
+if(!canvas1 || !canvas2){
+
+console.log("Chart canvas not ready");
+
+return;
+
+}
+
+
+// Room 1 Chart
+usageChart1 = new Chart(canvas1,{
+
+type:"bar",
+
+data:{
+
+labels:[
+"Light",
+"Fan",
+"Tube",
+"Socket"
+],
+
+datasets:[{
+
+label:"Room 1 Usage (min)",
+
+data:usageData.slice(0,4),
+
+backgroundColor:[
+
+"#22c55e",
+"#3b82f6",
+"#f59e0b",
+"#ef4444"
+
+]
+
+}]
+
+},
+
+options:{
+
+responsive:true,
+
+animation:false,   // ⭐ improves speed
+
+scales:{
+
+y:{
+
+beginAtZero:true,
+
+title:{
+
+display:true,
+
+text:"Minutes Used"
+
+}
+
+}
+
+}
+
+}
+
+});
+
+
+// Room 2 Chart
+usageChart2 = new Chart(canvas2,{
+
+type:"bar",
+
+data:{
+
+labels:[
+"Light",
+"Fan",
+"Bulb",
+"Socket"
+],
+
+datasets:[{
+
+label:"Room 2 Usage (min)",
+
+data:usageData.slice(4,8),
+
+backgroundColor:[
+
+"#16a34a",
+"#2563eb",
+"#d97706",
+"#dc2626"
+
+]
+
+}]
+
+},
+
+options:{
+
+responsive:true,
+
+animation:false,
+
+scales:{
+
+y:{
+
+beginAtZero:true,
+
+title:{
+
+display:true,
+
+text:"Minutes Used"
+
+}
+
+}
+
+}
+
+}
+
+});
+
+}
+
+
+
+// ---------- UPDATE GRAPHS ----------
+
+function updateGraphs(){
+
+// Ensure charts exist
+if(!usageChart1 || !usageChart2)
+return;
+
+
+// Validate usageData
+if(!Array.isArray(usageData))
+return;
+
+
+// Ensure correct length
+if(usageData.length < 8)
+return;
+
+
+// Update safely
+usageChart1.data.datasets[0].data =
+usageData.slice(0,4);
+
+usageChart2.data.datasets[0].data =
+usageData.slice(4,8);
+
+
+// Faster update (no animation)
+usageChart1.update("none");
+
+usageChart2.update("none");
+
+}
+
+
+
+// ---------- INIT AFTER PAGE LOAD ----------
+
+window.addEventListener("load", () => {
+initCharts();
+connectMQTT();   // start WiFi automatically
+});
+// ---------- FAN PANEL CONTROL ----------
+
+function toggleFanPanel(room){
+
+let panel =
+document.getElementById(
+"fanPanel"+room
+);
+
+let arrow =
+document.getElementById(
+"fanArrow"+room
+);
+
+if(!panel || !arrow) return;
+
+
+// Close other panels safely
+["fanPanel1","fanPanel2"].forEach(id=>{
+
+if(id !== "fanPanel"+room){
+
+let p =
+document.getElementById(id);
+
+let a =
+document.getElementById(
+id.replace("Panel","Arrow")
+);
+
+if(p){
+
+p.style.maxHeight = null;
+
+}
+
+if(a){
+
+a.classList.remove("open");
+
+}
+
+}
+
+});
+
+
+// Toggle selected panel
+if(panel.style.maxHeight &&
+panel.style.maxHeight !== "0px"){
+
+panel.style.maxHeight = "0px";
+
+arrow.classList.remove("open");
+
+}
+else{
+
+panel.style.maxHeight =
+panel.scrollHeight + "px";
+
+arrow.classList.add("open");
+
+}
+
+}
+
+
+
+// ---------- FAN SPEED CONTROL ----------
+
+function setFanSpeed(room,speed){
+
+// Ensure valid number
+speed = parseInt(speed);
+
+if(isNaN(speed)) return;
+
+// Clamp value (0–4)
+if(speed < 0) speed = 0;
+if(speed > 4) speed = 4;
+
+
+// Send command safely
+sendCommand(
+"F" + room + speed
+);
+
+}
+
+// =======================
+// NATIVE ANDROID BLE BRIDGE (SKETCHWARE)
+// =======================
+
+let bleConnected = false;
+let reconnectTimer = null;
+
+// ---------- START BLE ----------
+function startBLEClient(){
+
+try{
+
+console.log("BLE start requested");
+
+document.getElementById("bleStatus")
+.innerText = "Connecting...";
+
+if(window.Android){
+    Android.startBLE();
+}
+else{
+    document.getElementById("bleStatus")
+    .innerText = "Android bridge not found";
+}
+
+}
+catch(e){
+console.log("BLE ERROR:", e);
+document.getElementById("bleStatus")
+.innerText = "Connection Failed";
+}
+
+}
+
+
+// ---------- CONNECT BLE ----------
+function connectBLE(){
+
+try{
+
+console.log("BLE connect requested");
+
+document.getElementById("bleStatus")
+.innerText = "Connecting...";
+
+if(window.Android){
+    Android.connectBLE();
+}
+
+}
+catch(e){
+console.log("Connect failed:", e);
+scheduleReconnect();
+}
+
+}
+
+
+// ---------- DISCONNECT BLE ----------
+function disconnectBLE(){
+
+try{
+
+if(window.Android){
+    Android.disconnectBLE();
+}
+
+document.getElementById("bleStatus")
+.innerText = "Disconnected";
+
+bleConnected = false;
+
+}
+catch(e){
+console.log("BLE disconnect error:", e);
+}
+
+}
+
+
+// ---------- SEND COMMAND ----------
+function sendBLECommand(cmd){
+
+if(!cmd) return;
+
+try{
+
+console.log("BLE TX:", cmd);
+
+if(window.Android && currentMode === "ble"){
+    Android.sendBLE(cmd);
+}
+
+}
+catch(e){
+console.log("BLE send error:", e);
+scheduleReconnect();
+}
+
+}
+
+
+// ---------- DATA FROM ANDROID ----------
+function onBLEData(msg){
+
+console.log("BLE RX:", msg);
+parseData(msg);
+
+}
+
+
+// ---------- STATUS FROM ANDROID ----------
+function onBLEStatus(status){
+
+console.log("BLE STATUS:", status);
+
+document.getElementById("bleStatus")
+.innerText = status;
+
+bleConnected = (status === "Connected");
+}
+
+
+// ---------- SETUP BLE ----------
+function setupBLECharacteristics(){
+
+try{
+
+console.log("BLE setup requested");
+
+document.getElementById("bleStatus")
+.innerText = "Setting up BLE...";
+
+if(window.Android){
+    Android.setupBLE();
+}
+
+}
+catch(e){
+console.log("Setup error:", e);
+scheduleReconnect();
+}
+
+}
+
+
+// ---------- RECONNECT ----------
+function reconnectBLE(){
+
+try{
+
+if(window.Android){
+    Android.reconnectBLE();
+}
+
+document.getElementById("bleStatus")
+.innerText = "Reconnecting...";
+
+}
+catch(e){
+scheduleReconnect();
+}
+
+}
+
+
+// ---------- SCHEDULE RECONNECT ----------
+function scheduleReconnect(){
+
+if(reconnectTimer) return;
+
+reconnectTimer = setTimeout(()=>{
+
+reconnectTimer = null;
+
+if(currentMode === "ble"){
+    reconnectBLE();
+}
+
+}, 2000);
+
+}
+
+let SpeechRecognition =
+window.SpeechRecognition || window.webkitSpeechRecognition;
+
+let rec = null;
+let isRunning = false;
+let voiceIdleTimer = null;
+const voicePopup = document.getElementById("voicePopup");
+const waves = document.querySelectorAll(".wave");
+
+let awake = false;
+let wakeWord = "jarvis";
+
+let awakeTimeout = null;
+let lastCommandTime = 0;
+let buffer = "";
+
+// ---------- CONTEXT MEMORY ----------
+let context = {
+room: null,
+type: null,
+action: null
+};
+
+
+// ---------- SPEAK ----------
+function speak(text){
+if(!text) return;
+
+try{
+speechSynthesis.cancel();
+
+let msg = new SpeechSynthesisUtterance(text);
+msg.rate = 1;
+msg.pitch = 1;
+
+speechSynthesis.speak(msg);
+
+}catch(e){
+console.log("Speech error:", e);
+}
+}
+
+
+// ---------- NORMALIZE ----------
+function normalizeVoice(text){
+if(!text) return "";
+
+text = text
+.toLowerCase()
+.replace(/\bturn on\b/g,"on")
+.replace(/\bturn off\b/g,"off")
+.replace(/\bswitch on\b/g,"on")
+.replace(/\bswitch off\b/g,"off")
+.replace(/\bone\b/g,"1")
+.replace(/\btwo\b/g,"2")
+.replace(/\bthree\b/g,"3")
+.replace(/\bof\b/g,"off");
+
+return text;
+}
+function detectWakeWord(text){
+  if(!text) return false;
+
+  text = text.toLowerCase();
+
+  // normalize noise
+  text = text
+    .replace(/[.,!?]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const variations = [
+    "jarvis",
+    "hey jarvis",
+    "ok jarvis"
+  ];
+
+  return variations.some(v => text.includes(v));
+}
+// ---------- SPLIT ----------
+function splitCommands(cmd){
+return cmd
+.split(/\band\b|\bthen\b|,/)
+.map(s => s.trim())
+.filter(Boolean);
+}
+
+
+// ---------- ROOM RESOLVE (WITH MEMORY) ----------
+function resolveRoom(cmd, roomMap){
+let room = Object.keys(roomMap)
+.find(r => cmd.includes(r));
+
+if(room){
+context.room = room;
+return room;
+}
+
+return context.room;
+}
+
+
+// ---------- TYPE RESOLVE (WITH MEMORY) ----------
+function resolveType(cmd, typeMap){
+let type = Object.keys(typeMap)
+.find(t => cmd.includes(t));
+
+if(type){
+context.type = type;
+return type;
+}
+
+return context.type;
+}
+
+
+// ---------- START ENGINE ----------
+function startVoiceEngine(){
+waves.forEach(w => w.style.display = "block");
+document.querySelector(".mic").classList.add("active"); // ⭐
+showVoicePopup();   // ⭐ FORCE popup immediately
+if(!SpeechRecognition){
+alert("Speech not supported");
+return;
+}
+
+if(rec){
+rec.stop();
+rec = null;
+}
+
+rec = new SpeechRecognition();
+
+rec.lang = "en-US";
+rec.continuous = true;
+rec.interimResults = true;
+
+rec.onresult = handleVoice;
+rec.onerror = handleError;
+rec.onend = () => {
+  waves.forEach(w => w.style.display = "none");
+  document.querySelector(".mic").classList.remove("active");
+
+  if(currentMode === "wifi" || currentMode === "ble"){
+    restartEngine();
+  }
+};
+
+rec.start();
+
+isRunning = true;
+console.log("Voice engine started");
+}
+
+
+// ---------- RESTART SAFE ----------
+function restartEngine(){
+isRunning = false;
+
+setTimeout(()=>{
+try{
+if(rec){
+rec.start();
+isRunning = true;
+}
+}catch(e){
+console.log("restart fail", e);
+}
+}, 500);
+}
+
+
+// ---------- ERROR ----------
+function handleError(e){
+console.log("Speech error:", e.error);
+
+waves.forEach(w => w.style.display = "none"); // ⭐ ADD THIS
+
+if(e.error === "not-allowed"){
+speak("Microphone permission needed");
+}
+
+restartEngine();
+}
+
+function showVoicePopup(finalText="", interimText=""){
+  const popup = document.getElementById("voicePopup");
+popup.style.display = "block";
+
+  if(finalText){
+   const el = document.getElementById("voiceFinal");
+if(el) el.innerText = finalText;
+  }else{
+    document.getElementById("voiceFinal").innerHTML =
+      "Listening <span class='listening-dot'></span>";
+  }
+
+  document.getElementById("voiceInterim").innerText = interimText || "";
+}
+// ---------- VOICE INPUT ----------
+function handleVoice(e){
+
+let finalText = "";
+let interimText = "";
+
+// build streams properly
+for(let i = e.resultIndex; i < e.results.length; i++){
+
+let transcript = e.results[i][0].transcript;
+
+if(e.results[i].isFinal){
+finalText += transcript + " ";
+}else{
+interimText += transcript;
+}
+}
+
+let raw = finalText + interimText;
+let live = normalizeVoice(raw);
+
+showVoicePopup(finalText, interimText);
+
+if(!awake){
+
+if(detectWakeWord(raw)){   // ⭐ BEST PRACTICE
+awake = true;
+
+speak("Yes?");
+showVoicePopup();
+
+document.getElementById("voiceFinal").innerText = "Listening...";
+document.getElementById("voiceInterim").innerText = "";
+}
+
+return;
+}
+
+
+// =======================
+// COMMAND EXECUTION (FINAL ONLY)
+// =======================
+if(finalText && awake){
+
+document.getElementById("voiceFinal").innerText = "Processing...";
+document.getElementById("voiceInterim").innerText = "";
+
+let cmd = normalizeVoice(finalText);
+cmd = cmd.replace(wakeWord,"").trim();
+
+if(cmd.length > 0){
+voiceCommand(cmd);
+awake = false;
+
+setTimeout(hideVoicePopup, 800); // smoother exit
+}
+}
+
+}
+function hideVoicePopup(){
+  document.getElementById("voicePopup").style.display = "none";
+  waves.forEach(w => w.style.display = "none");
+document.querySelector(".mic").classList.remove("active"); 
+}
+function openVoiceUI(){
+  document.getElementById("voicePopup").style.display = "block";
+}
+
+function closeVoiceUI(){
+  document.getElementById("voicePopup").style.display = "none";
+}
+
+// ---------- MAIN ENGINE ----------
+function voiceCommand(cmd){
+
+if(!cmd) return;
+
+cmd = cmd.toLowerCase();
+
+const roomMap = {
+"room 1":[0,1,2,3],
+"room 2":[4,5,6,7]
+};
+
+const typeMap = {
+"light":[0,4,2,6],
+"fan":[1,5],
+"tube":[2],
+"bulb":[6],
+"socket":[3,7]
+};
+
+
+// ---------- CONTROL ----------
+function control(ids,action){
+if(!ids || !ids.length) return;
+
+ids.forEach(id=>{
+sendCommand(id + (action ? "1":"0"));
+});
+}
+
+
+// ---------- EXCEPT ----------
+function parseExcept(cmd, typeMap){
+let ids = [];
+
+let m = cmd.match(/except\s+([a-z\s,]+)/);
+if(m){
+m[1]
+.split(",")
+.map(t => t.trim())
+.forEach(t=>{
+if(typeMap[t]){
+ids.push(...typeMap[t]);
+}
+});
+}
+
+return ids;
+}
+
+
+// ---------- PROCESS ----------
+let parts = splitCommands(cmd);
+let feedback = [];
+
+for(let part of parts){
+
+let c = part.trim();
+
+let room = resolveRoom(c, roomMap);
+let type = resolveType(c, typeMap);
+
+let exceptIds = parseExcept(c, typeMap);
+
+
+// ---------- ROOM + TYPE ----------
+if(room && type && typeMap[type]){
+
+let ids = roomMap[room]
+.filter(id => typeMap[type].includes(id))
+.filter(id => !exceptIds.includes(id));
+
+if(c.includes("on")){
+control(ids,true);
+feedback.push(`${type} in ${room} ON`);
+}
+
+if(c.includes("off")){
+control(ids,false);
+feedback.push(`${type} in ${room} OFF`);
+}
+}
+
+
+// ---------- ROOM ALL ----------
+else if(room && c.includes("all")){
+
+let ids = roomMap[room]
+.filter(id => !exceptIds.includes(id));
+
+let action = c.includes("on");
+control(ids,action);
+
+feedback.push(`${room} all ${action?"ON":"OFF"}`);
+}
+
+
+// ---------- TYPE ONLY ----------
+else if(type && typeMap[type] && !room){
+
+let ids = typeMap[type]
+.filter(id => !exceptIds.includes(id));
+
+let action = c.includes("on");
+control(ids,action);
+
+feedback.push(`All ${type} ${action?"ON":"OFF"}`);
+}
+
+
+// ---------- EVERYTHING ----------
+else if(c.includes("everything") || c.includes("all devices")){
+
+let allIds = Array.from({length:8},(_,i)=>i)
+.filter(id => !exceptIds.includes(id));
+
+let action = c.includes("on");
+control(allIds,action);
+
+feedback.push(`All devices ${action?"ON":"OFF"}`);
+}
+}
+
+
+// ---------- STATUS ----------
+if(cmd.includes("status")){
+sendCommand("status");
+feedback.push("Getting status");
+}
+
+
+// ---------- RESPONSE ----------
+if(feedback.length){
+speak(feedback.join(". "));
+}else{
+speak("Command not understood");
+}
+}
+// ---------- MODE CONTROL ----------
+
+let currentMode = "wifi";
+
+
+
+// ---------- MQTT CONNECT ----------
+
+function connectMQTT(){
+
+try{
+
+// Stop old client safely
+if(client){
+
+client.end(true);
+
+}
+
+
+// Create new client
+client = mqtt.connect(broker,{
+
+username:"Debarghya_Sannigrahi",
+password:"Dsann#5956"
+
+});
+
+
+// Update UI
+document.getElementById("mqttStatus")
+.innerText="Connecting...";
+
+
+// Attach MQTT events (IMPORTANT)
+client.on("connect",()=>{ 
+
+document.getElementById("mqttStatus")
+.innerText="Connected"; 
+
+client.subscribe("home/esp32/update"); 
+client.subscribe("home/esp32/wifi_status"); 
+
+requestStatus();
+
+});
+
+
+client.on("reconnect",()=>{
+
+document.getElementById("mqttStatus")
+.innerText="Reconnecting...";
+
+});
+
+
+client.on("close",()=>{
+
+document.getElementById("mqttStatus")
+.innerText="Disconnected";
+
+});
+
+
+client.on("message",(topic,msg)=>{
+
+parseData(msg.toString());
+
+});
+
+}
+catch(e){
+
+console.log("MQTT connect error:", e);
+
+}
+
+}
+
+
+
+// ---------- MQTT DISCONNECT ----------
+
+function disconnectMQTT(){
+
+if(client){
+
+try{
+
+client.end(true);
+
+document.getElementById("mqttStatus")
+.innerText="Disconnected";
+
+}
+catch(e){
+
+console.log("MQTT disconnect error:", e);
+
+}
+
+}
+
+}
+
+
+
+// ---------- BLE DISCONNECT ----------
+
+function disconnectBLE(){
+  try{
+    if(window.Android){
+      Android.disconnectBLE();
+    }
+
+    document.getElementById("bleStatus")
+      .innerText = "Disconnected";
+  }
+  catch(e){
+    console.log("BLE disconnect error:", e);
+  }
+}
+
+
+// ---------- MODE SWITCH ----------
+
+function setMode(mode){
+
+if(mode === currentMode)
+return;
+
+currentMode = mode;
+
+
+// ---------- TAB UI ----------
+
+document.getElementById("wifiTab")
+.classList.toggle(
+"active",
+mode==="wifi"
+);
+
+document.getElementById("bleTab")
+.classList.toggle(
+"active",
+mode==="ble"
+);
+
+
+// ---------- STATUS UI ----------
+
+document.getElementById("wifiStatusBox")
+.style.display =
+mode==="wifi"
+? "block"
+: "none";
+
+document.getElementById("bleStatusBox")
+.style.display =
+mode==="ble"
+? "block"
+: "none";
+
+
+// ---------- CONNECTION LOGIC ----------
+
+if(mode === "wifi"){
+
+disconnectBLE();
+
+connectMQTT();
+
+}
+else{
+
+disconnectMQTT();
+
+document.getElementById("bleStatus")
+.innerText = "Connecting via Android BLE...";
+
+startBLEClient();
+
+}
+
+}
+</script>
+</body>
+    </html>
