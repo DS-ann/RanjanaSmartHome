@@ -7,7 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.widget.RemoteViews;
 
-/** Home-screen widget for common smart-home controls. */
+/** Home-screen widget for safe, direct smart-home presets. */
 public final class SmartHomeWidget extends AppWidgetProvider {
     private static final String ACTION_COMMAND = "com.example.smarthome.WIDGET_COMMAND";
     private static final String ACTION_OPEN = "com.example.smarthome.WIDGET_OPEN";
@@ -36,10 +36,11 @@ public final class SmartHomeWidget extends AppWidgetProvider {
 
     private static void update(Context context, AppWidgetManager manager, int id) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_smart_home);
-        views.setOnClickPendingIntent(R.id.widget_light1, pending(context, "r1_light_toggle", id));
-        views.setOnClickPendingIntent(R.id.widget_fan1, pending(context, "r1_fan_toggle", id));
-        views.setOnClickPendingIntent(R.id.widget_light2, pending(context, "r2_light_toggle", id));
-        views.setOnClickPendingIntent(R.id.widget_fan2, pending(context, "r2_fan_toggle", id));
+        // Firmware protocol: relay commands are <relay-index><0|1>; fan commands are F<room><speed>.
+        views.setOnClickPendingIntent(R.id.widget_light1, pending(context, "01", id));
+        views.setOnClickPendingIntent(R.id.widget_fan1, pending(context, "F10", id));
+        views.setOnClickPendingIntent(R.id.widget_light2, pending(context, "41", id));
+        views.setOnClickPendingIntent(R.id.widget_fan2, pending(context, "F20", id));
         views.setOnClickPendingIntent(R.id.widget_open, pendingOpen(context, id));
         manager.updateAppWidget(id, views);
     }
