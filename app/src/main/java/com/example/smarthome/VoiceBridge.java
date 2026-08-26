@@ -15,7 +15,7 @@ import android.webkit.WebView;
 
 import java.util.ArrayList;
 
-/** Native Android speech bridge. WebView speech recognition is unreliable on Android. */
+/** Native Android speech bridge with serialized restart/recovery. */
 public final class VoiceBridge implements RecognitionListener {
     private final Context context;
     private final WebView webView;
@@ -23,11 +23,12 @@ public final class VoiceBridge implements RecognitionListener {
     private SpeechRecognizer recognizer;
     private boolean running;
     private boolean stopping;
+    private boolean listening;
     private int restartCount;
 
     private final Runnable restartRunnable = new Runnable() {
         @Override public void run() {
-            if (running && !stopping) startListeningInternal();
+            if (running && !stopping && !listening) startListeningInternal();
         }
     };
 
@@ -42,6 +43,7 @@ public final class VoiceBridge implements RecognitionListener {
             if (!SpeechRecognizer.isRecognitionAvailable(context)) { postStatus("Speech Recognition Unavailable"); return; }
             stopping = false;
             running = true;
+            listening = false;
             restartCount = 0;
             ensureRecognizer();
             startListeningInternal();
@@ -52,6 +54,7 @@ public final class VoiceBridge implements RecognitionListener {
         handler.post(() -> {
             stopping = true;
             running = false;
+            listening = false;
             handler.removeCallbacks(restartRunnable);
             if (recognizer != null) {
                 try { recognizer.stopListening(); } catch (Exception ignored) { }
@@ -65,6 +68,7 @@ public final class VoiceBridge implements RecognitionListener {
         handler.post(() -> {
             stopping = true;
             running = false;
+            listening = false;
             handler.removeCallbacks(restartRunnable);
             if (recognizer != null) {
                 try { recognizer.destroy(); } catch (Exception ignored) { }
@@ -84,6 +88,7 @@ public final class VoiceBridge implements RecognitionListener {
     }
 
     private void recreateRecognizer() {
+        listening = false;
         if (recognizer != null) {
             try { recognizer.cancel(); } catch (Exception ignored) { }
             try { recognizer.destroy(); } catch (Exception ignored) { }
@@ -93,7 +98,7 @@ public final class VoiceBridge implements RecognitionListener {
     }
 
     private void startListeningInternal() {
-        if (!running || stopping) return;
+        if (!running || stopping || listening) return;
         ensureRecognizer();
         Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
@@ -101,9 +106,11 @@ public final class VoiceBridge implements RecognitionListener {
         intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
         intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3);
         try {
+            listening = true;
             recognizer.startListening(intent);
             postStatus("Listening...");
         } catch (Exception e) {
+            listening = false;
             recreateRecognizer();
             scheduleRestart(1000L);
         }
@@ -112,7 +119,7 @@ public final class VoiceBridge implements RecognitionListener {
     private void scheduleRestart(long delay) {
         if (!running || stopping) return;
         handler.removeCallbacks(restartRunnable);
-        long d = Math.min(delay + restartCount * 250L, 5000L);
+        long d = Math.min(delay + restartCount * 200L, 5000L);
         restartCount = Math.min(restartCount + 1, 12);
         handler.postDelayed(restartRunnable, d);
     }
@@ -121,24 +128,28 @@ public final class VoiceBridge implements RecognitionListener {
     @Override public void onBeginningOfSpeech() { }
     @Override public void onRmsChanged(float rmsdB) { }
     @Override public void onBufferReceived(byte[] buffer) { }
-    @Override public void onEndOfSpeech() { if (running && !stopping) scheduleRestart(150L); }
+
+    // Do not restart here: Android normally follows this with onResults/onError.
+    // Restarting from both callbacks caused overlapping recognizers and the visible on/off loop.
+    @Override public void onEndOfSpeech() { listening = false; }
 
     @Override public void onError(int error) {
+        listening = false;
         if (!running || stopping) return;
         if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) {
             running = false;
             postStatus("Microphone Permission Required");
             return;
         }
-        // Some Android recognition services become unusable after BUSY/CLIENT errors.
         if (error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY || error == SpeechRecognizer.ERROR_CLIENT) recreateRecognizer();
         postStatus("Listening...");
         scheduleRestart(error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY ? 1200L : 300L);
     }
 
     @Override public void onResults(android.os.Bundle results) {
+        listening = false;
         deliver(results, true);
-        if (running && !stopping) scheduleRestart(100L);
+        if (running && !stopping) scheduleRestart(150L);
     }
 
     @Override public void onPartialResults(android.os.Bundle partialResults) { deliver(partialResults, false); }
