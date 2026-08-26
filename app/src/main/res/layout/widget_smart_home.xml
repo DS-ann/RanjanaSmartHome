@@ -26,13 +26,13 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:text="R1 Light" />
+            android:text="R1 Light ON" />
         <Button
             android:id="@+id/widget_fan1"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:text="R1 Fan" />
+            android:text="R1 Fan OFF" />
     </LinearLayout>
 
     <LinearLayout
@@ -45,13 +45,13 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:text="R2 Light" />
+            android:text="R2 Light ON" />
         <Button
             android:id="@+id/widget_fan2"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:text="R2 Fan" />
+            android:text="R2 Fan OFF" />
     </LinearLayout>
 
     <Button
