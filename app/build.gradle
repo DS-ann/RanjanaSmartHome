@@ -3,20 +3,16 @@ plugins {
 }
 
 android {
-
     namespace 'com.example.smarthome'
-
     compileSdk 34
 
     defaultConfig {
-
         applicationId "com.example.smarthome"
-
         minSdk 24
         targetSdk 34
-
-        versionCode 1
-        versionName "1.0"
+        // Increment for every distributed APK so Android treats it as an update.
+        versionCode 25
+        versionName "1.25"
     }
 
     buildTypes {
@@ -27,7 +23,5 @@ android {
 }
 
 dependencies {
-
     implementation 'androidx.appcompat:appcompat:1.6.1'
-
 }
